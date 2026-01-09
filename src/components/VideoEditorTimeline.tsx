@@ -164,7 +164,7 @@ const CustomLeftPanel = () => {
     }
 
     return (
-        <div className="tools-panel">
+        <div className="tools-panel" style={{display:"flex", flexDirection:"column"}}>
             <input
                 type="file"
                 accept="audio/*"
@@ -183,8 +183,8 @@ const CustomLeftPanel = () => {
                     }
                 }}
             />
-            <input type="text" placeholder="add text" value={textInput} onChange={(e) => setTextInput(e.target.value)} />
-            <button onClick={addText}>add text</button>
+            {/* <input type="text" placeholder="add text" value={textInput} onChange={(e) => setTextInput(e.target.value)} />
+            <button onClick={addText}>add text</button> */}
         </div>
     );
 }
