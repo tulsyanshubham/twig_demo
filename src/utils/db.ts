@@ -96,6 +96,37 @@ export const listProjects = async () => {
 /* ========================================================= */
 /* ASSETS */
 /* ========================================================= */
+export const addAssetToProject = async (
+    projectId: string,
+    asset: AssetRecord
+) => {
+    const db = await initDB();
+    const tx = db.transaction([PROJECTS_STORE, ASSETS_STORE], "readwrite");
+
+    const projectStore = tx.objectStore(PROJECTS_STORE);
+    const assetStore = tx.objectStore(ASSETS_STORE);
+
+    const project = await projectStore.get(projectId);
+
+    if (!project) {
+        throw new Error(`Project ${projectId} not found`);
+    }
+
+    // Save asset
+    await assetStore.put(asset, asset.id);
+
+    // Link asset to project (avoid duplicates)
+    if (!project.assetIds.includes(asset.id)) {
+        project.assetIds.push(asset.id);
+    }
+
+    project.updatedAt = Date.now();
+
+    // Save project
+    await projectStore.put(project, projectId);
+
+    await tx.done;
+};
 
 export const saveAsset = async (
     asset: AssetRecord
