@@ -13,7 +13,7 @@
                     "s": 0,
                     "e": 9.943267,
                     "props": {
-                        "src": "https://videos.pexels.com/video-files/31708803/13510402_1080_1920_30fps.mp4",
+                        "src": "http://localhost:5173/idb/assets/f0da8636-777b-4fb2-9444-49927ca260c6",
                         "playbackRate": 1,
                         "time": 0,
                         "mediaFilter": "none",
@@ -21,8 +21,8 @@
                     },
                     "frame": {
                         "size": [
-                            720,
-                            1280
+                            1920,
+                            1080
                         ]
                     },
                     "frameEffects": [],
