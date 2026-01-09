@@ -3,43 +3,167 @@ import { LivePlayerProvider } from "@twick/live-player";
 import { TimelineProvider, useTimelineContext } from "@twick/timeline";
 import "@twick/video-editor/dist/video-editor.css";
 import { useEffect, useState } from "react";
-import { saveToDB, getFromDB } from "./utils/db";
 
-// Filter out verbose playback logs from @twick library
+import {
+  saveProject,
+  getProject,
+  updateEditDraft
+} from "./utils/db";
+
+/* -------------------------------- */
+/* Log suppression (unchanged) */
+/* -------------------------------- */
 const originalLog = console.log;
 console.log = (...args: any[]) => {
   const message = args[0];
-  if (typeof message === 'string') {
+  if (typeof message === "string") {
     const suppressedMessages = [
-      'onCurrentTimeUpdate',
-      'currentTime',
-      'Auto-starting media playback',
-      'Auto-pausing media playback',
-      'Media.play() called',
-      'Simple play started successfully'
+      "onCurrentTimeUpdate",
+      "currentTime",
+      "Auto-starting media playback",
+      "Auto-pausing media playback",
+      "Media.play() called",
+      "Simple play started successfully",
     ];
-    if (suppressedMessages.some(msg => message.includes(msg))) {
-      return; // Suppress these logs
-    }
+    if (suppressedMessages.some((msg) => message.includes(msg))) return;
   }
-  // Also suppress "objects [_Ur]" type logs
-  if (message === 'objects' || (typeof message === 'string' && message.trim() === 'objects')) {
-    return;
-  }
+  if (message === "objects") return;
   originalLog(...args);
 };
 
-const project_name = "My Video Project";
+const projectId = "project-1";
+const projectName = "My Video Project";
+
+const INITIAL_TIMELINE = {
+  "tracks": [
+    {
+      "id": "t-e84fa5a24ccb",
+      "name": "Track_1767940799091",
+      "type": "element",
+      "props": {},
+      "elements": [
+        {
+          "id": "e-0ca83216d80d",
+          "trackId": "t-e84fa5a24ccb",
+          "type": "video",
+          "s": 0,
+          "e": 9.943267,
+          "props": {
+            "src": "https://videos.pexels.com/video-files/31708803/13510402_1080_1920_30fps.mp4",
+            "playbackRate": 1,
+            "time": 0,
+            "mediaFilter": "none",
+            "volume": 1
+          },
+          "frame": {
+            "size": [
+              720,
+              1280
+            ]
+          },
+          "frameEffects": [],
+          "objectFit": "cover",
+          "mediaDuration": 9.943267
+        }
+      ]
+    },
+    {
+      "id": "t-d66271828b3d",
+      "name": "Track_2",
+      "type": "element",
+      "props": {},
+      "elements": [
+        {
+          "id": "e-6208084a641b",
+          "trackId": "t-d66271828b3d",
+          "type": "text",
+          "s": 0,
+          "e": 1,
+          "props": {
+            "text": "T1",
+            "fill": "#ffffff",
+            "fontSize": 93,
+            "fontFamily": "Poppins",
+            "fontWeight": 700,
+            "fontStyle": "normal",
+            "stroke": "#4d4d4d",
+            "lineWidth": 0,
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "e-f6dbc3cbf708",
+          "trackId": "t-d66271828b3d",
+          "type": "text",
+          "s": 1,
+          "e": 2,
+          "props": {
+            "text": "T2",
+            "fill": "#ffffff",
+            "fontSize": 93,
+            "fontFamily": "Poppins",
+            "fontWeight": 700,
+            "fontStyle": "normal",
+            "stroke": "#4d4d4d",
+            "lineWidth": 0,
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "e-87d4bc1aa6c8",
+          "trackId": "t-d66271828b3d",
+          "type": "text",
+          "s": 2,
+          "e": 3,
+          "props": {
+            "text": "T3",
+            "fill": "#ffffff",
+            "fontSize": 101,
+            "fontFamily": "Poppins",
+            "fontWeight": 700,
+            "fontStyle": "normal",
+            "stroke": "#4d4d4d",
+            "lineWidth": 0,
+            "textAlign": "center"
+          }
+        }
+      ]
+    },
+    {
+      "id": "t-8e673dd709d2",
+      "name": "Track_1767941188861",
+      "type": "element",
+      "props": {},
+      "elements": [
+        {
+          "id": "e-175c83f1335c",
+          "trackId": "t-8e673dd709d2",
+          "type": "audio",
+          "s": 0,
+          "e": 20.064,
+          "props": {
+            "src": "https://cdn.pixabay.com/audio/2022/03/14/audio_782eeb590e.mp3",
+            "time": 0,
+            "playbackRate": 1,
+            "volume": 1,
+            "loop": false
+          },
+          "mediaDuration": 20.064
+        }
+      ]
+    }
+  ],
+  "version": 56
+}
 
 function EditorWithContext() {
-  const { present, changeLog } = useTimelineContext();
- 
+  const { present } = useTimelineContext();
+
   useEffect(() => {
     if (!present) return;
 
-    console.log("Timeline state changed, saving to IndexedDB:", present);
-    saveToDB(project_name, present).catch(console.error);
-  }, [present, changeLog])
+    updateEditDraft(projectId, present).catch(console.error);
+  }, [present]);
 
   return (
     <VideoEditor
@@ -56,37 +180,43 @@ function EditorWithContext() {
   );
 }
 
+/* -------------------------------- */
+/* App */
+/* -------------------------------- */
 function App() {
-  const [timelineData, setTimelineData] = useState({tracks: [], version: 99});
+  const [timelineData, setTimelineData] = useState<any | null>(INITIAL_TIMELINE);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load timeline data from IndexedDB on mount
-    const loadData = async () => {
-      try {
-        const savedData = await getFromDB(project_name);
-        console.log("Loaded data:", savedData);
-        if (savedData) {
-          setTimelineData(savedData);
-        }
-      } catch (error) {
-        console.log('Error loading timeline data:', error);
-      } finally {
-        setIsLoading(false);
+    const loadProject = async () => {
+      let project = await getProject(projectId);
+
+      if (!project) {
+        project = {
+          id: projectId,
+          name: projectName,
+          editDraft: INITIAL_TIMELINE,
+          assetIds: [],
+          updatedAt: Date.now(),
+        };
+        await saveProject(project);
       }
+
+      setTimelineData(project.editDraft);
+      setIsLoading(false);
     };
 
-    loadData();
+    loadProject();
   }, []);
 
-  if (isLoading) {
+  if (isLoading || !timelineData) {
     return <div>Loading...</div>;
   }
 
   return (
     <LivePlayerProvider>
       <TimelineProvider
-        contextId={project_name}
+        contextId={projectId}
         initialData={timelineData}
         maxHistorySize={10}
         analytics={{ enabled: false }}
@@ -97,18 +227,27 @@ function App() {
   );
 }
 
-const CustomLeftPanel = () => (
-  <div className="tools-panel">
-    <button>Add Text</button>
-    <button>Add Image</button>
-    <button>Add Video</button>
-  </div>
-);
 
-const CustomRightPanel = () => (
-  <div className="properties-panel">
-    <h3>Element Properties</h3>
-  </div>
-);
+
+const CustomRightPanel = () => {
+
+  return (
+    <div className="properties-panel">
+      <h3>Element Properties</h3>
+    </div>
+  );
+}
 
 export default App;
+
+
+const CustomLeftPanel = () => {
+
+  return (
+    <div className="tools-panel">
+      <button>Add Text</button>
+      <button>Add Image</button>
+      <button>Add Video</button>
+    </div>
+  );
+}

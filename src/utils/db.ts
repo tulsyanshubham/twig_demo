@@ -1,31 +1,137 @@
-import { openDB, type DBSchema } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
-const DB_NAME = 'DynamicJsonDB';
-const STORE_NAME = 'json_store';
+/* ------------------ */
+/* Constants */
+/* ------------------ */
+const DB_NAME = "VideoEditorDB";
+const DB_VERSION = 1;
 
-interface MyDB extends DBSchema {
-    [STORE_NAME]: {
+const PROJECTS_STORE = "projects";
+const ASSETS_STORE = "assets";
+
+/* ------------------ */
+/* Types */
+/* ------------------ */
+export interface ProjectRecord {
+    id: string;
+    name: string;
+    editDraft: any;
+    assetIds: string[];
+    updatedAt: number;
+}
+
+export interface AssetRecord {
+    id: string;
+    fileName: string;
+    type: "audio" | "video" | "image" | "other";
+    mimeType: string;
+    blob: Blob;
+    createdAt: number;
+}
+
+interface EditorDB extends DBSchema {
+    [PROJECTS_STORE]: {
         key: string;
-        value: any;
+        value: ProjectRecord;
+    };
+    [ASSETS_STORE]: {
+        key: string;
+        value: AssetRecord;
     };
 }
 
-export const initDB = async () => {
-    return openDB<MyDB>(DB_NAME, 1, {
+/* ------------------ */
+/* DB Init */
+/* ------------------ */
+export const initDB = async (): Promise<IDBPDatabase<EditorDB>> => {
+    return openDB<EditorDB>(DB_NAME, DB_VERSION, {
         upgrade(db) {
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME);
+            if (!db.objectStoreNames.contains(PROJECTS_STORE)) {
+                db.createObjectStore(PROJECTS_STORE);
+            }
+            if (!db.objectStoreNames.contains(ASSETS_STORE)) {
+                db.createObjectStore(ASSETS_STORE);
             }
         },
     });
 };
 
-export const saveToDB = async (key: string, value: any) => {
+/* ========================================================= */
+/* PROJECTS */
+/* ========================================================= */
+
+export const saveProject = async (
+    project: ProjectRecord
+) => {
     const db = await initDB();
-    await db.put(STORE_NAME, value, key);
+    await db.put(PROJECTS_STORE, project, project.id);
 };
 
-export const getFromDB = async (key: string) => {
+export const getProject = async (
+    projectId: string
+): Promise<ProjectRecord | undefined> => {
     const db = await initDB();
-    return await db.get(STORE_NAME, key);
+    return db.get(PROJECTS_STORE, projectId);
+};
+
+export const updateEditDraft = async (
+    projectId: string,
+    editDraft: any
+) => {
+    const db = await initDB();
+    const project = await db.get(PROJECTS_STORE, projectId);
+    if (!project) return;
+
+    project.editDraft = editDraft;
+    project.updatedAt = Date.now();
+
+    await db.put(PROJECTS_STORE, project, projectId);
+};
+
+export const listProjects = async () => {
+    const db = await initDB();
+    return db.getAll(PROJECTS_STORE);
+};
+
+/* ========================================================= */
+/* ASSETS */
+/* ========================================================= */
+
+export const saveAsset = async (
+    asset: AssetRecord
+) => {
+    const db = await initDB();
+    await db.put(ASSETS_STORE, asset, asset.id);
+};
+
+export const getAsset = async (
+    assetId: string
+): Promise<AssetRecord | undefined> => {
+    const db = await initDB();
+    return db.get(ASSETS_STORE, assetId);
+};
+
+export const deleteAsset = async (
+    assetId: string
+) => {
+    const db = await initDB();
+    await db.delete(ASSETS_STORE, assetId);
+};
+
+/* ========================================================= */
+/* HELPERS */
+/* ========================================================= */
+
+export const createAssetFromFile = (
+    file: File,
+    type: "audio" | "video" | "image" | "other"
+): AssetRecord => {
+    return {
+        id: crypto.randomUUID(),
+        fileName: file.name,
+        type,
+        mimeType: file.type,
+        blob: file,
+        createdAt: Date.now(),
+    };
 };
